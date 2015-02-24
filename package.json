@@ -1,0 +1,20 @@
+{
+  "name": "bithft",
+  "version": "1.0.0",
+  "description": "Algorithmic Trading Bitcoin",
+  "main": "main.js",
+  "dependencies": {
+    "buttercoin-node": "^1.0.0",
+    "mongodb": "^1.4.31"
+  },
+  "devDependencies": {},
+  "repository": {
+    "type": "git",
+    "url": "git@bitbucket.org:ASTP001/bithft.git"
+  },
+  "keywords": [
+    "bitCoin"
+  ],
+  "author": "Ankur Saxena",
+  "license": "ISC"
+}
