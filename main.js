@@ -1,3 +1,4 @@
+var fs = require('fs');
 var buttercoin = require('buttercoin-node');
 var client = buttercoin(
     'qc5aqwtfwx2vtez3dtl6xscpe92u18xh',
@@ -5,6 +6,14 @@ var client = buttercoin(
     'production',
     'v1'
 );
+var ticker_models = require('./ticker_models.js');
+var mongoose = require('mongoose');
+
+var db = mongoose.connection;
+mongoose.connect('mongodb://orangecube.io:27017/bithft');
+
+//Name ticker Objects
+var buttercoin_ticker = ticker_models.buttercoin;
 
 //Main loop iteration rate
 var runRate = 700;
@@ -15,27 +24,46 @@ var LongPivot = 0;
 //Get aveagre of averages from past x minutes [Long Term Pivot Span]
 var LPSpan = 120;
 
+//Max size of pivot array
+var snapNeed = Math.ceil((LPSpan*60*1000)/runRate);
+
+//Collection of instantanious averages
+var pivot = [];
+
 //Difference in bid/ask price and LP at which to buy/sell
 var spread = {};
 spread.buy = 0.1;
 spread.sell = 0.1;
 spread.init = 0.1;
 
-//Collection of instantanious averages
-var pivot = [];
-
 //Latest ask and bid price based on the ticker
 var askNow = 0;
 var bidNow = 0;
 
+//Previous Buy/Sell Price
+var last = {
+    "Buy": 239.12,
+    "Sell": 240.09,
+    "Action": "buy"
+}
 
+var last = JSON.parse(fs.readFileSync('./lastBuySell.json'));
+
+//initialize data
+console.log("Connecting to mongodb...")
+db.once('open', function (callback){
+	console.log("Loading pivot averages...");
+	getPivotAvgs();
+  calcLongPivot();
+});
 
 
 setInterval(mainLoop, runRate);
 
 function mainLoop(){
-	getTicker();
-	transact(LongPivot, askNow, bidNow);
+	if(pivot.length != 0){
+		getTicker();
+	}
 }
 
 function getTicker() {
@@ -44,16 +72,16 @@ function getTicker() {
 	  	console.log("ticker err", err);
 	  }else {
 	  	var avg = (ticker.ask+ticker.bid)/2;
-	  	pivot.push(avg);
-	  	getLongPivot()
-	  	console.log("B: " + ticker.bid + " P: " + avg + " A: " + ticker.ask);
-	  	console.log("LP: " + LongPivot);
-	  	console.log("buy spread: " + (LongPivot-ticker.ask));
-		console.log("sell spread: " + (ticker.bid-LongPivot));
-	  	console.log();
+        pivot.push(avg);
+        calcLongPivot();
+        console.log("B: " + ticker.bid + " P: " + avg + " A: " + ticker.ask + " -- LP: " + LongPivot);
+        console.log("Last Buy: " + last.Buy + " -- Last Sell: " + last.Sell);
+        console.log("buy spread: " + (LongPivot-ticker.ask) + " -- R: " + spread.buy);
+        console.log("sell spread: " + (ticker.bid-LongPivot) + " -- R: " + spread.sell);
+        console.log();
 	  	askNow = ticker.ask;
 	  	bidNow = ticker.bid;
-	    // console.log("ticker", ticker);
+    	transact(LongPivot, askNow, bidNow);
 	  }
 	});
 }
@@ -80,8 +108,7 @@ function getTradeHistory() {
   });
 }
 
-function getLongPivot(){
-	var snapNeed = (LPSpan*60*1000)/runRate;
+function calcLongPivot(){
 	var pivotCalc = [];
 
 	//snap conditions
@@ -106,17 +133,17 @@ function getLongPivot(){
 }
 
 function transact(lp, ask, bid) {
-	if(lp-ask > spread.buy){
-		//buy
-		console.log("BUY BUY BUY BUY BUY BUY BUY BUY BUY BUY BUY");
-		buy();
-	}
-
-	if(bid-lp > spread.sell){
-		//sell
-		console.log("SELL SELL SELL SELL SELL SELL SELL SELL SELL");
-		sell();
-	}
+    if(lp-ask > spread.buy && (ask < last.Sell || last.Sell == 0)){
+        //buy
+        console.log("BUY BUY BUY BUY BUY BUY BUY BUY BUY BUY BUY");
+        buy();
+    }
+ 
+    if(bid-lp > spread.sell && (bid > last.Buy || last.Buy == 0)){
+        //sell
+        console.log("SELL SELL SELL SELL SELL SELL SELL SELL SELL");
+        sell();
+    }
 }
 
 function sell(){
@@ -133,6 +160,11 @@ function sell(){
 	  // console.log("cancel order", msg);
 	  spread.buy = spread.init;
 	  spread.sell += 0.05;
+    if(last.Action == "" || last.Action == "buy"){
+      last.Sell = bidNow;
+      last.Action == "sell";
+      fs.writeFile("./lastBuySell.json", JSON.stringify(last), function(){});
+    }
 	});
 	
 }
@@ -151,6 +183,26 @@ function buy(){
 	  // console.log("cancel order", msg);
 	  spread.buy += 0.05;
 	  spread.sell = spread.init;
+    if(last.Action == "" || last.Action == "sell"){
+      last.Buy = askNow;
+      last.Action == "buy";
+      fs.writeFile("./lastBuySell.json", JSON.stringify(last), function(){});
+    }
 	});
 	
 }
+
+function updateLastBuySell() {
+  fs.writeFile('./lastBuySell.json')
+}
+
+//Can only be called inside when connection to mongo is open
+function getPivotAvgs(){
+	buttercoin_ticker.find().slice("avg", snapNeed).select("avg").exec(function (err, db_pivots){
+		if(err) console.log(err);
+		for(var i in db_pivots){
+			pivot.push(db_pivots[i].avg);
+		}
+	});
+}
+
