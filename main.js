@@ -74,10 +74,10 @@ function getTicker() {
 	  	var avg = (ticker.ask+ticker.bid)/2;
         pivot.push(avg);
         calcLongPivot();
-        console.log("B: " + ticker.bid + " P: " + avg + " A: " + ticker.ask + " -- LP: " + LongPivot);
+        console.log("B: " + ticker.bid + " P: " + avg + " A: " + ticker.ask + " -- LP: " + LongPivot.toFixed(4));
         console.log("Last Buy: " + last.Buy + " -- Last Sell: " + last.Sell + " -- Last Action: " + last.Action);
-        console.log("buy spread: " + (LongPivot-ticker.ask) + " -- R: " + spread.buy);
-        console.log("sell spread: " + (ticker.bid-LongPivot) + " -- R: " + spread.sell);
+        console.log("buy spread: " + (LongPivot-ticker.ask.toFixed(4)) + " -- R: " + spread.buy);
+        console.log("sell spread: " + (ticker.bid-LongPivot.toFixed(4)) + " -- R: " + spread.sell);
         console.log();
 	  	askNow = ticker.ask;
 	  	bidNow = ticker.bid;
