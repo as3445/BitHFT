@@ -41,20 +41,16 @@ var askNow = 0;
 var bidNow = 0;
 
 //Previous Buy/Sell Price
-var last = {
-    "Buy": 239.12,
-    "Sell": 240.09,
-    "Action": "buy"
-}
+var last = JSON.parse(fs.readFileSync('./lastBuySell.json'));
 
 var balance = {};
 updateBalance();
 
 
-var last = JSON.parse(fs.readFileSync('./lastBuySell.json'));
+
 
 //initialize data
-console.log("Connecting to mongodb...")
+console.log("Connecting to mongodb...");
 db.once('open', function (callback){
 	console.log("Loading pivot averages...");
 	getPivotAvgs();
@@ -137,17 +133,26 @@ function calcLongPivot(){
 }
 
 function transact(lp, ask, bid) {
-    if(lp-ask > spread.buy && (ask < last.Sell || last.Sell == 0)){
-        //buy
-        console.log("BUY BUY BUY BUY BUY BUY BUY BUY BUY BUY BUY");
-        buy();
-    }
- 
-    if(bid-lp > spread.sell && (bid > last.Buy || last.Buy == 0)){
-        //sell
-        console.log("SELL SELL SELL SELL SELL SELL SELL SELL SELL");
-        sell();
-    }
+
+  //v1
+  // var buyLogic = (lp-ask > spread.buy && (ask < last.Sell || last.Sell == 0));
+  // var sellLogic = (bid-lp > spread.sell && (bid > last.Buy || last.Buy == 0));
+
+  //v2
+  var buyLogic = (lp-ask > spread.buy);
+  var sellLogic = (bid-lp > spread.sell);
+
+  if(buyLogic){
+      //buy
+      console.log("BUY BUY BUY BUY BUY BUY BUY BUY BUY BUY BUY");
+      buy();
+  }
+
+  if(sellLogic){
+      //sell
+      console.log("SELL SELL SELL SELL SELL SELL SELL SELL SELL");
+      sell();
+  }
 }
 
 function sell(){
@@ -163,7 +168,7 @@ function sell(){
 	  // console.log("cancel order err", err);
 	  // console.log("cancel order", msg);
 	  spread.buy = spread.init;
-	  spread.sell += 0.1;
+	  spread.sell += 0.5;
     if(last.Action == "" || last.Action == "buy"){
       last.Sell = bidNow;
       last.Action = "sell";
@@ -185,7 +190,7 @@ function buy(){
 	client.createOrder(order, function (err, msg) {
 	  // console.log("cancel order err", err);
 	  // console.log("cancel order", msg);
-	  spread.buy += 0.1;
+	  spread.buy += 0.5;
 	  spread.sell = spread.init;
     if(last.Action == "" || last.Action == "sell"){
       last.Buy = askNow;
