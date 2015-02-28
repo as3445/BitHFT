@@ -32,9 +32,9 @@ var pivot = [];
 
 //Difference in bid/ask price and LP at which to buy/sell
 var spread = {};
-spread.buy = 0.5;
-spread.sell = 0.5;
-spread.init = 0.5;
+spread.buy = 1;
+spread.sell = 1;
+spread.init = 1;
 
 //Latest ask and bid price based on the ticker
 var askNow = 0;
@@ -76,8 +76,8 @@ function getTicker() {
         calcLongPivot();
         console.log("B: " + ticker.bid + " P: " + avg + " A: " + ticker.ask + " -- LP: " + LongPivot.toFixed(4));
         console.log("Last Buy: " + last.Buy + " -- Last Sell: " + last.Sell + " -- Last Action: " + last.Action);
-        console.log("buy spread: " + (LongPivot-ticker.ask.toFixed(4)) + " -- R: " + spread.buy);
-        console.log("sell spread: " + (ticker.bid-LongPivot.toFixed(4)) + " -- R: " + spread.sell);
+        console.log("buy spread: " + ((LongPivot-ticker.ask).toFixed(4)) + " -- R: " + spread.buy);
+        console.log("sell spread: " + ((ticker.bid-LongPivot).toFixed(4)) + " -- R: " + spread.sell);
         console.log();
 	  	askNow = ticker.ask;
 	  	bidNow = ticker.bid;
